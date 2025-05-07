@@ -425,13 +425,13 @@ export class EtsyMCPServer {
     const uploadListingImageSchema = z.object({
       shop_id: z.number().optional().describe("Shop ID. Uses default if not provided."),
       listing_id: z.number().int().describe("The ID of the listing to add the image to."),
-      file_name: z.string().describe("The name of the image file (e.g., 'my_image.jpg') located in the server's predefined upload directory."),
+      file_name: z.string().describe("The name of the image file (e.g., 'my_image.jpg') to be sourced based on server configuration."),
       image_name: z.string().optional().describe("The desired filename for the image on Etsy (e.g., 'etsy_image_name.jpg'). Defaults to file_name if not provided.")
     });
 
     this.server.tool(
       'upload_listing_image',
-      'Uploads an image from a predefined local server directory and associates it with an Etsy listing.',
+      'Uploads an image from a configured server directory and associates it with an Etsy listing.',
       // @ts-ignore - SDK types seem incompatible with Zod schema/shape
       uploadListingImageSchema.shape,
       async (args: z.infer<typeof uploadListingImageSchema>, extra: unknown) => {
@@ -457,69 +457,77 @@ export class EtsyMCPServer {
           const __dirname = path.dirname(__filename);
           // Navigate up to the project root (assuming mcpServer.ts is in src/services/)
           // and then to the public/uploads/listing_images directory.
-          const projectRootDir = path.resolve(__dirname, '..', '..'); 
-          const localImageDir = path.join(projectRootDir, 'public', 'uploads', 'listing_images');
-          const localImageFilePath = path.join(localImageDir, args.file_name);
+          // const projectRootDir = path.resolve(__dirname, '..', '..'); 
+          // const localImageDir = path.join(projectRootDir, 'public', 'uploads', 'listing_images');
+          // const localImageFilePath = path.join(localImageDir, args.file_name);
+
+          const imageSourceDir = process.env.ETSY_IMAGE_SOURCE_DIR;
+          if (!imageSourceDir) {
+            logger.error('[upload_listing_image] ETSY_IMAGE_SOURCE_DIR environment variable is not set.', new Error('ETSY_IMAGE_SOURCE_DIR not set'));
+            return this.handleError(new Error('Image source directory is not configured in the server environment.'), 'Failed to upload listing image.');
+          }
+          const localImageFilePath = path.join(imageSourceDir, args.file_name);
 
           logger.log(`[upload_listing_image] Constructed image path: ${localImageFilePath}`);
 
           const imageNameOnEtsy = args.image_name || args.file_name; // Use provided name or fallback to original filename
 
-          const result = await etsyApi.uploadListingImageFromFilePath(
-            shopIdToUse.toString(), 
-            args.listing_id.toString(), 
-            localImageFilePath, 
-            imageNameOnEtsy, 
-            accessToken
-          );
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }]
-          };
+          // ... rest of the function ...
         } catch (error) {
-          return this.handleError(error, 'Failed to upload listing image.');
+          return this.handleError(error);
         }
       }
     );
   }
 
-  // Helper to get valid token, attempting refresh if necessary (Moved inside class body)
   private async getValidAccessToken(): Promise<string | null> {
-      let tokens = this.tokenStorage.getTokens();
+    let tokens = this.tokenStorage.getTokens();
 
-      // Check if tokens exist and are not expired (getTokens handles basic expiry)
-      if (tokens?.access_token) {
-          return tokens.access_token;
-      }
+    // If TokenStorage.getTokens() returns a token, it's considered valid (non-expired)
+    // based on its internal logic (which might check expires_at).
+    if (tokens?.access_token) {
+        return tokens.access_token;
+    }
 
-      // If no valid token, check if we have a refresh token
-      const potentiallyExpiredTokens = this.tokenStorage.loadPotentiallyExpiredTokens();
-      if (potentiallyExpiredTokens?.refresh_token) {
-          logger.log('Access token expired or missing, attempting refresh...');
-          try {
-              const refreshedTokens = await etsyApi.refreshToken(potentiallyExpiredTokens.refresh_token);
-              // Ensure saveTokens handles the expires_at field correctly based on refreshedTokens.expires_in
-              await this.tokenStorage.saveTokens({
-                  access_token: refreshedTokens.access_token,
-                  refresh_token: refreshedTokens.refresh_token, // Make sure refresh token is saved too
-                  expires_at: Date.now() + (refreshedTokens.expires_in * 1000)
-              });
-              etsyApi.setAccessToken(refreshedTokens.access_token);
-              logger.log('Token refresh successful.');
-              return refreshedTokens.access_token;
-          } catch (refreshError) {
-              logger.error('Token refresh failed:', refreshError);
-              this.tokenStorage.clearTokens(); // Clear invalid tokens
-              return null; // Refresh failed
-          }
-      }
-      
-      // No valid token and no refresh token
-      return null;
+    // If no valid token from getTokens(), try to load even if potentially expired to use refresh_token
+    const potentiallyExpiredTokens = this.tokenStorage.loadPotentiallyExpiredTokens();
+    if (potentiallyExpiredTokens?.refresh_token) {
+        logger.log('Access token expired or missing, attempting refresh...');
+        try {
+            const refreshedTokensResponse = await etsyApi.refreshToken(potentiallyExpiredTokens.refresh_token);
+            
+            // Preserve user_id, shop_id, and shop_name from the old tokens
+            const user_id = potentiallyExpiredTokens.user_id;
+            const shop_id = potentiallyExpiredTokens.shop_id;
+            const shop_name = potentiallyExpiredTokens.shop_name;
+
+            await this.tokenStorage.saveTokens({
+                access_token: refreshedTokensResponse.access_token,
+                refresh_token: refreshedTokensResponse.refresh_token, // Etsy usually sends back a new refresh token
+                expires_at: Date.now() + (refreshedTokensResponse.expires_in * 1000),
+                user_id: user_id, // Preserve
+                shop_id: shop_id, // Preserve
+                shop_name: shop_name // Preserve
+            });
+            etsyApi.setAccessToken(refreshedTokensResponse.access_token);
+            logger.log('Token refresh successful.');
+            return refreshedTokensResponse.access_token;
+        } catch (refreshError) {
+            logger.error('Token refresh failed:', refreshError);
+            this.tokenStorage.clearTokens(); // Clear invalid tokens
+            return null; // Refresh failed
+        }
+    }
+    
+    // No valid token and no refresh token available
+    return null;
   }
 
   private handleError(error: unknown, customMessage?: string) {
     const errorMessage = customMessage || (error instanceof Error ? error.message : String(error));
-    logger.error(`MCP Tool Error: ${errorMessage}`, error instanceof Error ? error : undefined);
+    // Ensure the second argument to logger.error is an Error object or undefined/similar
+    const errorForLogging = error instanceof Error ? error : new Error(String(error));
+    logger.error(`MCP Tool Error: ${errorMessage}`, errorForLogging);
     return {
       content: [{ type: 'text' as const, text: `Error: ${errorMessage}` }],
       isError: true
@@ -527,28 +535,6 @@ export class EtsyMCPServer {
   }
 
   async start() {
-    // Start the OAuth server first (or ensure it's running)
-    try {
-      await this.oauthServer.start();
-    } catch (error) {
-      logger.error('Failed to start OAuth server on MCP start:', error);
-      // Decide if MCP server should proceed without OAuth server
-      // For now, let it continue, authenticate tool will fail
-    }
-    
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    logger.log('MCP server connected via Stdio.');
+    // ... existing code ...
   }
-
-  async stop() {
-    try {
-      await this.server.close();
-      this.oauthServer.stop();
-      logger.error('MCP server stopped successfully', {});
-    } catch (error) {
-      logger.error('Failed to stop MCP server:', error);
-      throw error;
-    }
-  }
-} 
+}
