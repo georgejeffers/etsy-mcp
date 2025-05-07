@@ -44,4 +44,10 @@ Desktop.ini
 
 # Test Output
 coverage/
-.nyc_output/ 
+.nyc_output/
+
+# Project specific
+public/uploads/listing_images/*
+!public/uploads/listing_images/.gitkeep
+docs.md
+local-research/ 
