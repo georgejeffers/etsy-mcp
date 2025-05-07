@@ -59,6 +59,8 @@ This MCP server is primarily designed for development and tool integration. Plea
     # Optional: define a custom path for token storage and logs
     # ETSY_MCP_TOKEN_PATH=/path/to/your/token_storage_directory
     # ETSY_MCP_LOG_PATH=/path/to/your/logs_directory
+    # Optional: Your default shipping profile ID for physical items
+    # SHIPPING_PROFILE_ID=YOUR_DEFAULT_SHIPPING_PROFILE_ID
     ```
     **Note**: The `REDIRECT_URI` in your `.env` file (or the default `http://localhost:3003/oauth/callback`) **must** match one of the redirect URIs configured for your Etsy App.
 
@@ -93,6 +95,7 @@ In Cursor settings, navigate to the MCP tab, click "+ Add new global MCP server"
                 "ETSY_CLIENT_SECRET": "YOUR_ETSY_CLIENT_SECRET_HERE"
                 // Add other ENV VARS from your .env if needed, e.g., REDIRECT_URI
                 // "REDIRECT_URI": "http://localhost:3003/oauth/callback"
+                // "SHIPPING_PROFILE_ID": "YOUR_DEFAULT_SHIPPING_PROFILE_ID_HERE"
             },
             "cwd": "/Users/name/Desktop/repos/ai gemini apps/etsy_api/etsy-mcp" // IMPORTANT: Update this to the correct absolute path of your project
         }
@@ -330,8 +333,6 @@ Uploads an image from a predefined local server directory and associates it with
 MIT License (Please create a LICENSE file with the MIT License text if you choose this license, or specify another.)
 
 ## Sponsors
-
-We are grateful for the support of our sponsors:
 
 - [Resold](https://resold.app/)
 - [Vinta](https://vinta.app/)
