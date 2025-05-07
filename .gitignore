@@ -50,4 +50,5 @@ coverage/
 public/uploads/listing_images/*
 !public/uploads/listing_images/.gitkeep
 docs.md
-local-research/ 
+local-research/
+.repomix-output.txt 
