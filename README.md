@@ -10,13 +10,13 @@ This MCP server is primarily designed for development and tool integration. Plea
 
 ## Features
 
-🔑 **OAuth2 Authentication**: Handles the complete Etsy OAuth2 flow with PKCE.
-🛍️ **Listing Management**: Create, and retrieve Etsy listings.
-ℹ️ **Shop Information**: Fetch details for your Etsy shop.
-📦 **Shipping Profiles**: List and create shipping profiles for your shop.
-🖼️ **Image Uploads**: Upload images and associate them with your listings.
-🔧 **Default Shop Management**: Set and get a default shop for easier multi-shop use.
-🔒 **Secure Token Storage**: Persists OAuth tokens securely.
+- 🔑 **OAuth2 Authentication**: Handles the complete Etsy OAuth2 flow with PKCE.
+- 🛍️ **Listing Management**: Create, and retrieve Etsy listings.
+- ℹ️ **Shop Information**: Fetch details for your Etsy shop.
+- 📦 **Shipping Profiles**: List and create shipping profiles for your shop.
+- 🖼️ **Image Uploads**: Upload images and associate them with your listings.
+- 🔧 **Default Shop Management**: Set and get a default shop for easier multi-shop use.
+- 🔒 **Secure Token Storage**: Persists OAuth tokens securely.
 
 ## Installation
 
@@ -327,4 +327,13 @@ Uploads an image from a predefined local server directory and associates it with
 
 ## License
 
-MIT License (Please create a LICENSE file with the MIT License text if you choose this license, or specify another.) 
+MIT License (Please create a LICENSE file with the MIT License text if you choose this license, or specify another.)
+
+## Sponsors
+
+We are grateful for the support of our sponsors:
+
+- [Resold](https://resold.app/)
+- [Vinta](https://vinta.app/)
+- [House Illustrator](https://houseillustrator.com/)
+- [GitClip](https://gitclip.io/#buy-now) 
